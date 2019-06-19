@@ -12,6 +12,7 @@ def reload_annotator_labels(session, candidate_class, annotator_name, split, fil
     """Reloads stable annotator labels into the AnnotatorLabel table"""
     # Sets up the AnnotatorLabelKey to use
     ak = session.query(GoldLabelKey).filter(GoldLabelKey.name == annotator_name).first()
+    # print("ak: ", ak)
     if ak is None:
         ak = GoldLabelKey(name=annotator_name)
         session.add(ak)
@@ -23,18 +24,20 @@ def reload_annotator_labels(session, candidate_class, annotator_name, split, fil
     sl_query = sl_query.filter(StableLabel.split == split) if filter_label_split else sl_query
     for sl in sl_query.all():
         context_stable_ids = sl.context_stable_ids.split('~~')
+        #print("context_stable_ids: ", context_stable_ids)
 
         # Check for labeled Contexts
         # TODO: Does not create the Contexts if they do not yet exist!
         contexts = []
         for stable_id in context_stable_ids:
             context = session.query(Context).filter(Context.stable_id == stable_id).first()
+            #print("context: ", context)
             if context:
                 contexts.append(context)
         if len(contexts) < len(context_stable_ids):
             missed.append(sl)
             continue
-
+        # print("missed: ", missed)
         # Check for Candidate
         # Assemble candidate arguments
         candidate_args  = {'split' : split}
@@ -46,7 +49,7 @@ def reload_annotator_labels(session, candidate_class, annotator_name, split, fil
         for k, v in iteritems(candidate_args):
             candidate_query = candidate_query.filter(getattr(candidate_class, k) == v)
         candidate = candidate_query.first()
-
+        # print("candidate: ", candidate)
         # Optionally construct missing candidates
         if candidate is None and create_missing_cands:
             candidate = candidate_class(**candidate_args)
@@ -55,13 +58,13 @@ def reload_annotator_labels(session, candidate_class, annotator_name, split, fil
         if candidate is None:
             missed.append(sl)
             continue
-
+        # print("missed", missed)
         # Check for AnnotatorLabel, otherwise create
         label = session.query(GoldLabel).filter(GoldLabel.key == ak).filter(GoldLabel.candidate == candidate).first()
         if label is None:
             label = GoldLabel(candidate=candidate, key=ak, value=sl.value)
             session.add(label)
             labels.append(label)
-
+    # print("missed: ", len(missed))
     session.commit()
     print("AnnotatorLabels created: %s" % (len(labels),))

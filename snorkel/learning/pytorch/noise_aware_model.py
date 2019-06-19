@@ -33,10 +33,11 @@ class TorchNoiseAwareModel(Classifier, nn.Module):
     
     :param n_threads: Parallelism to use; single-threaded if None
     """
-    def __init__(self, n_threads=None, **kwargs):
+    def __init__(self, n_threads=None, seed=123, **kwargs):
         Classifier.__init__(self, **kwargs)
         nn.Module.__init__(self)
         self.n_threads = n_threads
+        self.seed = seed
         self.model_kwargs = None
 
     def _check_input(self, X):
