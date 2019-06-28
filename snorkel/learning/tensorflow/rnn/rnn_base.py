@@ -50,7 +50,7 @@ class RNNBase(TFNoiseAwareModel):
         return x_batch, len_batch
 
     def _build_model(self, dim=50, attn_window=None, max_len=20,
-        cell_type=tf.contrib.rnn.BasicLSTMCell, word_dict=SymbolTable(), 
+        cell_type=tf.contrib.rnn.BasicLSTMCell, word_dict=SymbolTable(), vocab_size=10000,
         **kwargs):
         """
         Build RNN model
@@ -64,8 +64,12 @@ class RNNBase(TFNoiseAwareModel):
         # Set the word dictionary passed in as the word_dict for the instance
         self.max_len = max_len
         self.word_dict = word_dict
-        vocab_size = word_dict.len()
-
+        self.vocab_size = vocab_size
+        print("currrent vocab size is: ", word_dict.len())
+        if word_dict.len() < vocab_size:
+            vocab_size = word_dict.len()
+        print("but capped to: ", vocab_size)
+        
         # Define input layers
         self.sentences        = tf.placeholder(tf.int32, [None, None])
         self.sentence_lengths = tf.placeholder(tf.int32, [None])
@@ -105,6 +109,7 @@ class RNNBase(TFNoiseAwareModel):
                 initial_state_bw=initial_state_bw,
                 time_major=False               
             )
+        
         potentials = get_bi_rnn_output(rnn_out, dim, self.sentence_lengths)
         
         # Add dropout layer
@@ -166,8 +171,10 @@ class RNNBase(TFNoiseAwareModel):
         
         # Get max sentence size
         max_len = max_sentence_length or max(len(x) for x in X_train)
-        self._check_max_sentence_length(ends, max_len=max_len)
-        
+        print("max sentence len in training data: ", max(len(x) for x in X_train))
+        print("but capped to: ", max_len)
+        # self._check_max_sentence_length(ends, max_len=max_len)
+        print("And also curtailing warning(s) related to checking individual max sentence lengths in each narrative")
         # Train model- note we pass word_dict through here so it gets saved...
         super(RNNBase, self).train(X_train, Y_train, X_dev=X_dev,
             word_dict=self.word_dict, max_len=max_len, **kwargs)
@@ -179,7 +186,7 @@ class RNNBase(TFNoiseAwareModel):
         # Preprocess if not already preprocessed
         if isinstance(test_candidates[0], Candidate):
             X_test, ends = self._preprocess_data(test_candidates, extend=False)
-            self._check_max_sentence_length(ends)
+            #self._check_max_sentence_length(ends)
         else:
             X_test = test_candidates
 
